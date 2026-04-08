@@ -2,15 +2,30 @@
 
 An agent skill for deepfake detection and media safety — powered by [Resemble AI](https://resemble.ai).
 
-Give any AI coding agent (Claude Code, Cursor, Copilot, Windsurf, Gemini CLI, and others) the ability to detect AI-generated audio, images, and video using Resemble's detection platform.
+Give any AI agent the ability to detect AI-generated audio, images, and video using Resemble's detection platform.
+
+## Compatible Agents
+
+Works with any agent that supports markdown skills:
+
+| Agent | Install Method |
+|---|---|
+| [Claude Code](https://claude.ai/code) | `npx skills add resemble-ai/detect-skill` or copy to `.claude/skills/` |
+| [OpenClaw](https://github.com/openclaw/openclaw) (formerly Clawdbot) | Copy to skills directory or import via built-in skill loader |
+| [Hermes Agent](https://github.com/nousresearch/hermes-agent) | Add to skills directory — Hermes will auto-discover and self-improve on it |
+| [Cursor](https://cursor.com) | Add to `.cursor/skills/` or project rules |
+| [GitHub Copilot](https://github.com/features/copilot) | Add to `.github/copilot-instructions.md` or reference in prompt |
+| [Windsurf](https://codeium.com/windsurf) | Add to project rules |
+| [Gemini CLI](https://github.com/google-gemini/gemini-cli) | Add to `.gemini/skills/` |
 
 ## Install
 
+**Via skills.sh (recommended):**
 ```bash
 npx skills add resemble-ai/detect-skill
 ```
 
-Or manually copy [`detect.md`](./detect.md) into your project's `.claude/skills/` directory (or equivalent for your agent).
+**Manual:** Copy [`detect.md`](./detect.md) into your agent's skills directory.
 
 ## What It Does
 
@@ -43,6 +58,8 @@ The skill is a single markdown file (`detect.md`) that provides your AI agent wi
 - **Red flags** — anti-patterns the agent should catch in its own reasoning
 - **Error handling** — every status code with cause and resolution
 
+Agents like [Hermes Agent](https://github.com/nousresearch/hermes-agent) with self-improving skill systems will automatically refine their use of this skill over time. [OpenClaw](https://github.com/openclaw/openclaw)'s 100+ prebuilt skills ecosystem makes it a natural fit — drop `detect.md` in and it works alongside existing skills immediately.
+
 ## Example Prompts
 
 Once installed, try asking your agent:
@@ -59,6 +76,8 @@ Once installed, try asking your agent:
 - [Resemble MCP Server](https://github.com/resemble-ai/resemble-mcp) — Full MCP integration
 - [API Documentation](https://docs.resemble.ai) — Resemble API docs
 - [skills.sh](https://skills.sh) — The Open Agent Skills Ecosystem
+- [OpenClaw](https://github.com/openclaw/openclaw) — Open-source AI agent (formerly Clawdbot)
+- [Hermes Agent](https://github.com/nousresearch/hermes-agent) — Self-improving AI agent by Nous Research
 
 ## License
 
