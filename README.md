@@ -25,7 +25,7 @@ Works with any agent that supports markdown skills:
 npx skills add resemble-ai/detect-skill
 ```
 
-**Manual:** Copy [`detect.md`](./detect.md) into your agent's skills directory.
+**Manual:** Copy [`SKILL.md`](./SKILL.md) into your agent's skills directory.
 
 ## What It Does
 
@@ -49,7 +49,7 @@ For the richest experience, pair this skill with the [Resemble MCP server](https
 
 ## How It Works
 
-The skill is a single markdown file (`detect.md`) that provides your AI agent with:
+The skill is a single markdown file (`SKILL.md`) that provides your AI agent with:
 
 - **Decision tree** — maps user intent to the correct API capability and endpoint
 - **Complete API reference** — every endpoint, parameter, and response schema
