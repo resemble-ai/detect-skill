@@ -1,3 +1,8 @@
+---
+name: resemble-detect
+description: Deepfake detection and media safety — detect AI-generated audio, images, and video, trace synthesis sources, apply watermarks, verify speaker identity, and analyze media intelligence using Resemble AI
+---
+
 # Resemble Detect — Deepfake Detection & Media Safety
 
 Analyze audio, image, and video for synthetic manipulation, AI-generated content, watermarks, speaker identity, and media intelligence using the Resemble AI platform.
