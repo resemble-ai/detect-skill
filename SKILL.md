@@ -1,11 +1,11 @@
 ---
 name: resemble-detect
-description: Deepfake detection and media safety — detect AI-generated audio, images, and video, trace synthesis sources, apply watermarks, verify speaker identity, and analyze media intelligence using Resemble AI
+description: Deepfake detection and media safety — detect AI-generated audio, images, video, and text, trace synthesis sources, apply watermarks, verify speaker identity, and analyze media intelligence using Resemble AI
 ---
 
 # Resemble Detect — Deepfake Detection & Media Safety
 
-Analyze audio, image, and video for synthetic manipulation, AI-generated content, watermarks, speaker identity, and media intelligence using the Resemble AI platform.
+Analyze audio, image, video, and text for synthetic manipulation, AI-generated content, watermarks, speaker identity, and media intelligence using the Resemble AI platform.
 
 ## Core Principle — THE IRON LAW
 
@@ -17,7 +17,7 @@ Do not guess, infer, or speculate about media authenticity. Every authenticity c
 
 Use this skill whenever the user's request involves any of these:
 
-- Checking if audio, video, or image is AI-generated or manipulated
+- Checking if audio, video, image, or text is AI-generated or manipulated
 - Detecting deepfakes in any media format
 - Verifying media authenticity or provenance
 - Identifying which AI platform synthesized audio (source tracing)
@@ -25,7 +25,8 @@ Use this skill whenever the user's request involves any of these:
 - Analyzing media for speaker info, emotion, transcription, or misinformation
 - Asking natural-language questions about detection results
 - Matching or verifying speaker identity against known voice profiles
-- Any mention of: "deepfake", "fake detection", "synthetic media", "voice verification", "watermark", "media forensics", "authenticity check", "source tracing", "is this real"
+- Detecting AI-generated or machine-written text
+- Any mention of: "deepfake", "fake detection", "synthetic media", "voice verification", "watermark", "media forensics", "authenticity check", "source tracing", "is this real", "AI-written text", "text detection"
 
 **Do NOT use** for text-to-speech generation, voice cloning, or speech-to-text transcription — those are separate Resemble capabilities.
 
@@ -40,6 +41,7 @@ Use this skill whenever the user's request involves any of these:
 | Apply an invisible watermark to media                 | **Watermark Apply**       | `POST /watermark/apply`    |
 | Check if media contains a watermark                   | **Watermark Detect**      | `POST /watermark/detect`   |
 | Verify a speaker's identity against known profiles    | **Identity Search**       | `POST /identity/search`    |
+| Check if text is AI-generated                         | **Text Detection**        | `POST /text_detect`        |
 | Create a voice identity profile for future matching   | **Identity Create**       | `POST /identity`           |
 
 When multiple capabilities apply (e.g., user wants deepfake detection AND intelligence), combine them in a single `POST /detect` call using the `intelligence: true` flag rather than making separate requests.
@@ -392,6 +394,84 @@ Lower `distance` = closer match. Higher `confidence` = stronger match.
 
 ---
 
+## Phase 6: Text Detection
+
+Detect whether text content is AI-generated or human-written.
+
+> **Beta feature** — requires the `detect_beta_user` role or a billing plan that includes the `dfd_text` product.
+
+### Submit a Text Detection
+
+```
+POST /text_detect
+Content-Type: application/json
+Authorization: Bearer <API_KEY>
+```
+
+Add the `Prefer: wait` header for a synchronous (blocking) response. Without it, the job runs asynchronously — poll or use a callback.
+
+**Parameters:**
+
+| Parameter      | Type    | Required | Description                                              |
+|----------------|---------|----------|----------------------------------------------------------|
+| `text`         | string  | Yes      | Text to analyze (max 100,000 characters)                 |
+| `thinking`     | string  | No       | Always use `"low"` (default)                             |
+| `threshold`    | float   | No       | Decision threshold 0.0–1.0 (default: 0.5)               |
+| `callback_url` | string  | No       | Webhook URL for async completion notification             |
+| `privacy_mode` | boolean | No       | If true, text content is not stored after analysis        |
+
+**Response:**
+```json
+{
+  "success": true,
+  "item": {
+    "uuid": "abc-123",
+    "status": "completed",
+    "prediction": "ai",
+    "confidence": 0.91,
+    "text_content": "This is some text to analyze.",
+    "privacy_mode": false,
+    "created_at": "...",
+    "updated_at": "..."
+  }
+}
+```
+
+- `prediction`: `"ai"` or `"human"` — the verdict
+- `confidence`: 0.0–1.0, higher = more confident in the prediction
+- `status`: `"processing"`, `"completed"`, or `"failed"`
+
+### Poll for Results
+
+If you did not use `Prefer: wait`, poll until `status` is `"completed"` or `"failed"`:
+
+```
+GET /text_detect/{uuid}
+Authorization: Bearer <API_KEY>
+```
+
+### List Text Detections
+
+```
+GET /text_detect
+Authorization: Bearer <API_KEY>
+```
+
+Returns paginated text detections for the team.
+
+### Callback
+
+If `callback_url` was provided, a `POST` is sent on completion:
+```json
+{ "success": true, "item": { ... } }
+```
+On failure:
+```json
+{ "success": false, "item": { ... }, "error": "Error message here" }
+```
+
+---
+
 ## Recommended Workflows
 
 ### Full Media Forensics (Most Thorough)
@@ -438,7 +518,8 @@ For creators who want to prove their content is authentic:
 
 - **Declaring authenticity without a detection result** — Never say media is real or fake based on visual/auditory inspection alone
 - **Ignoring the score and reporting only the label** — A `"fake"` label with score 0.51 means something very different from score 0.95
-- **Submitting local file paths to the API** — The API requires publicly accessible HTTPS URLs
+- **Submitting local file paths to the API** — The API requires publicly accessible HTTPS URLs (does not apply to text detection)
+- **Sending text longer than 100,000 characters to text detection** — Split into chunks or inform the user of the limit
 - **Polling too aggressively** — Start at 2s intervals, back off exponentially; do not loop at <1s
 - **Asking Detect Intelligence questions before detection completes** — Results in 422 error
 - **Expecting source tracing on "real" audio** — Source tracing only runs on audio labeled `"fake"`
@@ -471,5 +552,6 @@ When presenting results to users:
 ## Privacy & Compliance Notes
 
 - **Zero retention mode**: Set `zero_retention_mode: true` to auto-delete media after analysis. The URL is redacted and `media_deleted` is set to true post-completion.
-- **Data handling**: Media URLs are stored by default. For GDPR/compliance-sensitive workflows, always enable zero retention.
+- **Text privacy mode**: Set `privacy_mode: true` on text detection to prevent text content from being stored after analysis.
+- **Data handling**: Media URLs and text content are stored by default. For GDPR/compliance-sensitive workflows, enable zero retention (media) or privacy mode (text).
 - **Callback security**: If using `callback_url`, ensure the endpoint is HTTPS and authenticated on the receiving end.
