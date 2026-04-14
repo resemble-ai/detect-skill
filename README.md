@@ -45,7 +45,48 @@ This skill teaches your agent to use Resemble's full detection and media safety 
 - A [Resemble AI](https://app.resemble.ai) API key
 - Media files accessible via public HTTPS URLs
 
-For the richest experience, pair this skill with the [Resemble MCP server](https://github.com/resemble-ai/resemble-mcp) which gives your agent direct access to Resemble's documentation and API reference tools.
+## Pair With the Resemble MCP Server (Recommended)
+
+For the richest experience, pair this skill with the **[Resemble MCP server](https://github.com/resemble-ai/resemble-mcp)** so your agent gets live access to Resemble's full documentation, API reference, and endpoint schemas — no guessing, no stale examples.
+
+### Easiest setup — hosted SSE endpoint (zero install)
+
+```
+https://mcp.resemble.ai/sse
+```
+
+Point any MCP-compatible agent at this URL and you're done. No cloning, no installing, no server to run.
+
+**Cursor** — add to `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "resemble": {
+      "url": "https://mcp.resemble.ai/sse"
+    }
+  }
+}
+```
+
+**Claude Desktop / Claude Code** — add to `claude_desktop_config.json` (or `.claude/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "resemble": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp.resemble.ai/sse"]
+    }
+  }
+}
+```
+
+**Any other MCP-compatible agent** (OpenClaw, Hermes Agent, Windsurf, Cline, Continue, etc.) — point the MCP client at `https://mcp.resemble.ai/sse`. See the [Resemble MCP README](https://github.com/resemble-ai/resemble-mcp) for per-agent config snippets.
+
+**Prefer self-hosting?** Clone [resemble-ai/resemble-mcp](https://github.com/resemble-ai/resemble-mcp) and run it locally.
+
+Once connected, the agent gets tools like `resemble_docs_lookup`, `resemble_api_endpoint`, and `resemble_api_search` — this skill is built to use them when available.
 
 ## How It Works
 
@@ -73,7 +114,8 @@ Once installed, try asking your agent:
 ## Links
 
 - [Resemble AI](https://resemble.ai) — Platform
-- [Resemble MCP Server](https://github.com/resemble-ai/resemble-mcp) — Full MCP integration
+- [`mcp.resemble.ai/sse`](https://mcp.resemble.ai/sse) — Hosted MCP endpoint (zero install)
+- [resemble-ai/resemble-mcp](https://github.com/resemble-ai/resemble-mcp) — Self-host the MCP server
 - [API Documentation](https://docs.resemble.ai) — Resemble API docs
 - [skills.sh](https://skills.sh) — The Open Agent Skills Ecosystem
 - [OpenClaw](https://github.com/openclaw/openclaw) — Open-source AI agent (formerly Clawdbot)
