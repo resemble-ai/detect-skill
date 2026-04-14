@@ -114,7 +114,7 @@ Once installed, try asking your agent:
 ## Links
 
 - [Resemble AI](https://resemble.ai) — Platform
-- [`mcp.resemble.ai/sse`](https://mcp.resemble.ai/sse) — Hosted MCP endpoint (zero install)
+- [mcp.resemble.ai/sse](https://mcp.resemble.ai/sse) — Hosted MCP endpoint (zero install)
 - [resemble-ai/resemble-mcp](https://github.com/resemble-ai/resemble-mcp) — Self-host the MCP server
 - [API Documentation](https://docs.resemble.ai) — Resemble API docs
 - [skills.sh](https://skills.sh) — The Open Agent Skills Ecosystem
