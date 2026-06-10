@@ -1,8 +1,8 @@
 # Resemble Detect Skill
 
-An agent skill for deepfake detection and media safety — powered by [Resemble AI](https://resemble.ai).
+An agent skill for deepfake detection and media intelligence — powered by [Resemble AI](https://resemble.ai).
 
-Give any AI agent the ability to detect AI-generated audio, images, and video using Resemble's detection platform.
+Give any AI agent the ability to detect AI-generated audio, images, and video, then analyze completed detection results using Resemble's Detect and Intelligence APIs.
 
 ## Compatible Agents
 
@@ -21,6 +21,7 @@ Works with any agent that supports markdown skills:
 ## Install
 
 **Via skills.sh (recommended):**
+
 ```bash
 npx skills add resemble-ai/detect-skill
 ```
@@ -29,21 +30,25 @@ npx skills add resemble-ai/detect-skill
 
 ## What It Does
 
-This skill teaches your agent to use Resemble's full detection and media safety suite:
+This skill teaches your agent to use Resemble's Detect and Intelligence APIs directly:
 
 | Capability | Description |
 |---|---|
-| **Deepfake Detection** | Analyze audio, image, and video for synthetic manipulation with confidence scores and visualizations |
-| **Intelligence** | Extract speaker info, emotion, transcription, misinformation signals, and abnormalities from any media |
+| **Deepfake Detection** | Analyze audio, image, and video for synthetic manipulation with labels, scores, status, and visualizations |
+| **Direct Uploads** | Submit local/private files directly to `POST /detect` with multipart upload, or use secure upload tokens for larger/non-public media |
+| **Audio Source Tracing** | Identify which AI platform, such as ElevenLabs or Resemble, may have synthesized detected fake audio |
+| **Intelligence** | Extract speaker info, emotion, transcription, misinformation signals, abnormalities, and image/video context |
 | **Detect Intelligence** | Ask natural-language follow-up questions about completed detection results |
-| **Audio Source Tracing** | Identify which AI platform (ElevenLabs, Resemble, etc.) synthesized detected fake audio |
-| **Watermarking** | Apply invisible watermarks for provenance tracking, or detect existing watermarks in media |
-| **Identity Verification** | Create voice profiles and match unknown speakers against them (Beta) |
+
 
 ## Requirements
 
 - A [Resemble AI](https://app.resemble.ai) API key
-- Media files accessible via public HTTPS URLs
+- `curl` for direct API calls
+- One of these media inputs for detection:
+  - a public HTTPS URL,
+  - a local file upload up to 150 MB, or
+  - a secure upload token for larger/non-public media
 
 ## Direct API Usage
 
@@ -61,15 +66,16 @@ curl --request POST "${BASE_URL}/detect" \
     "url": "https://example.com/media.mp4",
     "intelligence": true,
     "visualize": true,
+    "audio_source_tracing": true,
     "zero_retention_mode": true
   }'
 ```
 
-For private/local media, `POST /detect` also supports direct `multipart/form-data` file upload up to 150 MB, and the Secure Upload flow for larger files or non-public media. See [`SKILL.md`](./SKILL.md) for copy-pasteable `curl` workflows.
+For private/local media, `POST /detect` also supports direct `multipart/form-data` file upload up to 150 MB. For larger or non-public media, use the Secure Upload flow and pass the returned `media_token` into `POST /detect`. See [`SKILL.md`](./SKILL.md) for copy-pasteable workflows.
 
 ## Optional: Pair With the Resemble MCP Server for Docs
 
-If your agent supports MCP, you can still pair this skill with the **[Resemble MCP server](https://github.com/resemble-ai/resemble-mcp)** for live documentation and endpoint schema lookup. MCP is optional; it is not required for the skill's detection, intelligence, watermark, identity, or text-detection workflows.
+If your agent supports MCP, you can still pair this skill with the **[Resemble MCP server](https://github.com/resemble-ai/resemble-mcp)** for live documentation and endpoint schema lookup. MCP is optional; it is not required for the skill's Detect or Intelligence workflows.
 
 Hosted endpoint:
 
@@ -83,12 +89,12 @@ See the [Resemble MCP README](https://github.com/resemble-ai/resemble-mcp) for p
 
 The skill is a single markdown file (`SKILL.md`) that provides your AI agent with:
 
-- **Decision tree** — maps user intent to the correct API capability and endpoint
-- **Complete API reference** — every endpoint, parameter, and response schema
+- **Decision tree** — maps user intent to Detect, Intelligence, or Detect Intelligence endpoints
+- **Direct API examples** — curl-first workflows for URL, file upload, secure upload, and polling
 - **Score interpretation** — how to read and present detection confidence scores
-- **Workflow templates** — full forensics, quick checks, and provenance pipelines
+- **Workflow templates** — full media forensics and quick authenticity checks
 - **Red flags** — anti-patterns the agent should catch in its own reasoning
-- **Error handling** — every status code with cause and resolution
+- **Error handling** — common status codes with cause and resolution
 
 Agents like [Hermes Agent](https://github.com/nousresearch/hermes-agent) with self-improving skill systems will automatically refine their use of this skill over time. [OpenClaw](https://github.com/openclaw/openclaw)'s 100+ prebuilt skills ecosystem makes it a natural fit — drop `detect.md` in and it works alongside existing skills immediately.
 
@@ -97,17 +103,19 @@ Agents like [Hermes Agent](https://github.com/nousresearch/hermes-agent) with se
 Once installed, try asking your agent:
 
 - *"Is this audio file a deepfake?"*
-- *"Analyze this video for AI manipulation and tell me what platform might have generated it"*
-- *"Apply a watermark to this image for provenance tracking"*
-- *"Check if this speaker matches the voice profile we have on file"*
+- *"Analyze this video for AI manipulation and tell me what platform might have generated it."*
+- *"Run detection with intelligence on this image URL."*
+- *"Ask a follow-up question about this completed detection result."*
 - *"What can you tell me about this audio — speaker, emotion, language, any abnormalities?"*
 
 ## Links
 
 - [Resemble AI](https://resemble.ai) — Platform
-- [`mcp.resemble.ai/sse`](https://mcp.resemble.ai/sse) — Hosted MCP endpoint (zero install)
-- [resemble-ai/resemble-mcp](https://github.com/resemble-ai/resemble-mcp) — Self-host the MCP server
-- [API Documentation](https://docs.resemble.ai) — Resemble API docs
+- [Detect API Documentation](https://docs.resemble.ai/detect.md) — Deepfake detection docs
+- [Submit Detection Job](https://docs.resemble.ai/detect/create.md) — `POST /detect`
+- [Intelligence Documentation](https://docs.resemble.ai/detect/intelligence.md) — Media intelligence docs
+- [`mcp.resemble.ai/sse`](https://mcp.resemble.ai/sse) — Optional hosted MCP endpoint for docs/schema lookup
+- [resemble-ai/resemble-mcp](https://github.com/resemble-ai/resemble-mcp) — Optional MCP docs server
 - [skills.sh](https://skills.sh) — The Open Agent Skills Ecosystem
 - [OpenClaw](https://github.com/openclaw/openclaw) — Open-source AI agent (formerly Clawdbot)
 - [Hermes Agent](https://github.com/nousresearch/hermes-agent) — Self-improving AI agent by Nous Research

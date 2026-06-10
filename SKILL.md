@@ -1,11 +1,11 @@
 ---
 name: resemble-detect
-description: Deepfake detection and media safety — detect AI-generated audio, images, video, and text, trace synthesis sources, apply watermarks, verify speaker identity, and analyze media intelligence using direct Resemble AI API calls
+description: Deepfake detection and media safety — detect AI-generated audio, images, and video, trace synthesis sources, and analyze media intelligence using direct Resemble AI API calls
 ---
 
 # Resemble Detect — Deepfake Detection & Media Safety
 
-Analyze audio, image, video, and text for synthetic manipulation, AI-generated content, watermarks, speaker identity, and media intelligence using **direct Resemble AI API calls**.
+Analyze audio, image, and video for synthetic manipulation, AI-generated content, and media intelligence using **direct Resemble AI API calls**.
 
 ## Core Principle — THE IRON LAW
 
@@ -17,16 +17,13 @@ Do not guess, infer, or speculate about media authenticity. Every authenticity c
 
 Use this skill whenever the user's request involves any of these:
 
-- Checking if audio, video, image, or text is AI-generated or manipulated
+- Checking if audio, video, or image is AI-generated or manipulated
 - Detecting deepfakes in any media format
 - Verifying media authenticity or provenance
 - Identifying which AI platform synthesized audio (source tracing)
-- Applying or detecting watermarks on media
 - Analyzing media for speaker info, emotion, transcription, or misinformation
 - Asking natural-language questions about detection results
-- Matching or verifying speaker identity against known voice profiles
-- Detecting AI-generated or machine-written text
-- Any mention of: "deepfake", "fake detection", "synthetic media", "voice verification", "watermark", "media forensics", "authenticity check", "source tracing", "is this real", "AI-written text", "text detection"
+- Any mention of: "deepfake", "fake detection", "synthetic media", "media forensics", "authenticity check", "source tracing", "is this real"
 
 **Do NOT use** for text-to-speech generation, voice cloning, or speech-to-text transcription — those are separate Resemble capabilities.
 
@@ -53,11 +50,6 @@ Never print API keys or paste bearer tokens into chat. Use environment variables
 | Know *which AI platform* made fake audio              | **Audio Source Tracing**  | `POST /detect` with `audio_source_tracing: true` |
 | Get speaker info, emotion, transcription from media   | **Intelligence**          | `POST /intelligence`       |
 | Ask questions about a completed detection             | **Detect Intelligence**   | `POST /detects/{uuid}/intelligence`, then poll answer |
-| Apply an invisible watermark to media                 | **Watermark Apply**       | `POST /watermark/apply`    |
-| Check if media contains a watermark                   | **Watermark Detect**      | `POST /watermark/detect`   |
-| Verify a speaker's identity against known profiles    | **Identity Search**       | `POST /identity/search`    |
-| Check if text is AI-generated                         | **Text Detection**        | `POST /text_detect`        |
-| Create a voice identity profile for future matching   | **Identity Create**       | `POST /identity`           |
 
 When multiple media capabilities apply, combine them in a single `POST /detect` call using flags such as `intelligence: true`, `audio_source_tracing: true`, `visualize: true`, `use_reverse_search: true`, and `zero_retention_mode: true` instead of making separate jobs.
 
@@ -67,8 +59,7 @@ When multiple media capabilities apply, combine them in a single `POST /detect` 
 2. **Use `Prefer: wait` when a synchronous result is acceptable.** Without it, submit the job, capture the returned UUID, and poll.
 3. **Poll async jobs until terminal status.** Terminal statuses are `completed` and `failed`.
 4. **Use zero retention for sensitive media.** Set `zero_retention_mode: true` for media detection when privacy matters.
-5. **Use privacy mode for sensitive text.** Set `privacy_mode: true` for text detection when text should not be retained.
-6. **Only report completed results.** Pending/processing jobs are not verdicts.
+5. **Only report completed results.** Pending/processing jobs are not verdicts.
 
 ## Reusable Shell Setup
 
@@ -373,156 +364,6 @@ Important: source tracing is most useful when audio is labeled `fake`. If the au
 
 ---
 
-## Phase 4: Watermarking
-
-Apply invisible watermarks to media for provenance tracking, or detect existing watermarks.
-
-> Watermark APIs are beta. If access fails, report the beta/access requirement instead of retrying indefinitely.
-
-### Apply a Watermark
-
-```bash
-curl --request POST "${BASE_URL}/watermark/apply" \
-  -H "$AUTH_HEADER" \
-  -H "Content-Type: application/json" \
-  -H "Prefer: wait" \
-  --data '{
-    "url": "https://example.com/image.png",
-    "strength": 0.3,
-    "custom_message": "my-organization"
-  }'
-```
-
-Without `Prefer: wait`, poll:
-
-```bash
-WATERMARK_UUID="..."
-curl --request GET "${BASE_URL}/watermark/apply/${WATERMARK_UUID}/result" \
-  -H "$AUTH_HEADER"
-```
-
-Response includes `item.watermarked_media` when complete.
-
-### Detect a Watermark
-
-```bash
-curl --request POST "${BASE_URL}/watermark/detect" \
-  -H "$AUTH_HEADER" \
-  -H "Content-Type: application/json" \
-  -H "Prefer: wait" \
-  --data '{
-    "url": "https://example.com/suspect-image.png",
-    "custom_message": "resembleai"
-  }'
-```
-
-Without `Prefer: wait`, poll:
-
-```bash
-WATERMARK_UUID="..."
-curl --request GET "${BASE_URL}/watermark/detect/${WATERMARK_UUID}/result" \
-  -H "$AUTH_HEADER"
-```
-
-Audio detection metrics may include `has_watermark` and `confidence`; image/video results include `has_watermark`.
-
----
-
-## Phase 5: Identity — Speaker Verification (Beta)
-
-Create voice identity profiles and match incoming audio against them.
-
-> Identity APIs are beta. If access fails, tell the user beta access may be required.
-
-### Create an Identity Profile
-
-```bash
-curl --request POST "${BASE_URL}/identity" \
-  -H "$AUTH_HEADER" \
-  -H "Content-Type: application/json" \
-  --data '{
-    "url": "https://example.com/known-speaker.wav",
-    "name": "Jane Doe"
-  }'
-```
-
-### Search Against Known Identities
-
-```bash
-curl --request POST "${BASE_URL}/identity/search" \
-  -H "$AUTH_HEADER" \
-  -H "Content-Type: application/json" \
-  --data '{
-    "url": "https://example.com/unknown-speaker.wav",
-    "top_k": 5
-  }'
-```
-
-Response:
-
-```json
-{
-  "success": true,
-  "item": [
-    { "uuid": "...", "name": "Jane Doe", "confidence": 0.92, "distance": 0.08 }
-  ]
-}
-```
-
-Lower `distance` means a closer match. Higher `confidence` means a stronger match.
-
----
-
-## Phase 6: Text Detection
-
-Detect whether text content is AI-generated or human-written.
-
-> Text detection may require a beta role or a plan that includes the text-detection product. If access fails, report the access requirement.
-
-### Submit a Text Detection
-
-```bash
-curl --request POST "${BASE_URL}/text_detect" \
-  -H "$AUTH_HEADER" \
-  -H "Content-Type: application/json" \
-  -H "Prefer: wait" \
-  --data '{
-    "text": "Text to analyze goes here.",
-    "thinking": "low",
-    "threshold": 0.5,
-    "privacy_mode": true
-  }'
-```
-
-Without `Prefer: wait`, the job runs asynchronously. Poll until `status` is `completed` or `failed`:
-
-```bash
-TEXT_DETECT_UUID="..."
-curl --request GET "${BASE_URL}/text_detect/${TEXT_DETECT_UUID}" \
-  -H "$AUTH_HEADER"
-```
-
-List text detections:
-
-```bash
-curl --request GET "${BASE_URL}/text_detect" \
-  -H "$AUTH_HEADER"
-```
-
-Parameters:
-
-| Parameter      | Type    | Required | Description                                       |
-|----------------|---------|----------|---------------------------------------------------|
-| `text`         | string  | Yes      | Text to analyze, max 100,000 characters           |
-| `thinking`     | string  | No       | Use `"low"` unless the API docs state otherwise   |
-| `threshold`    | float   | No       | Decision threshold 0.0–1.0, default 0.5           |
-| `callback_url` | string  | No       | Webhook URL for async completion notification      |
-| `privacy_mode` | boolean | No       | Prevents text content from being stored after analysis |
-
-Read `item.prediction` (`"ai"` or `"human"`), `item.confidence`, and `item.status`.
-
----
-
 ## Recommended Workflows
 
 ### Full Media Forensics (Most Thorough)
@@ -543,7 +384,6 @@ Read `item.prediction` (`"ai"` or `"human"`), `item.confidence`, and `item.statu
 4. Read `intelligence.description` if intelligence was requested.
 5. If audio is synthetic, check `audio_source_tracing.label` for the likely source platform.
 6. Ask a follow-up via `POST /detects/{uuid}/intelligence` only after the detection is complete.
-7. Check for watermarks via `POST /watermark/detect` if provenance is relevant.
 
 ### Quick Authenticity Check (Fastest)
 
@@ -559,12 +399,6 @@ Read `item.prediction` (`"ai"` or `"human"`), `item.confidence`, and `item.statu
 3. Check `item.metrics.label` and `item.metrics.aggregated_score` for audio, or `item.image_metrics.label` / `item.video_metrics.label` and `score` for image/video.
 4. Report the result with score context and detector caveats.
 
-### Provenance Pipeline (Content Creators)
-
-1. Apply watermark to original content: `POST /watermark/apply`.
-2. Distribute the watermarked media.
-3. Later, verify provenance: `POST /watermark/detect` against any copy.
-
 ---
 
 ## Red Flags — Stop and Reassess
@@ -574,11 +408,9 @@ Read `item.prediction` (`"ai"` or `"human"`), `item.confidence`, and `item.statu
 - **Ignoring score and reporting only label** — a `fake` label with score 0.51 is very different from score 0.95.
 - **Submitting multiple media sources** — `file`, `url`, and `media_token` are mutually exclusive for detection.
 - **Uploading files larger than 150 MB directly** — use secure upload or public URL.
-- **Sending text longer than 100,000 characters to text detection** — split into chunks or tell the user about the limit.
 - **Polling too aggressively** — start at 2 seconds and back off; do not loop at sub-second intervals.
 - **Asking Detect Intelligence questions before detection completes** — this can return `422`.
 - **Expecting source tracing on authentic audio** — source tracing is most useful for synthetic audio.
-- **Treating beta features as guaranteed** — watermark, identity, and text detection access may depend on plan/beta enrollment.
 - **Leaking credentials** — never print bearer tokens, `.env` files, or authorization headers with real secrets.
 
 ## Response Presentation Guidelines
@@ -589,7 +421,7 @@ When presenting results to users:
 2. **Include status and score** — only report authenticity when status is `completed`.
 3. **Name the fields used** — e.g. `item.metrics.aggregated_score`, `item.image_metrics.score`, or `item.video_metrics.score`.
 4. **Mention limitations** — detection is probabilistic, not absolute proof or legal evidence.
-5. **Include operational details** — whether intelligence, reverse search, OOD, source tracing, watermarking, or zero retention was used.
+5. **Include operational details** — whether intelligence, reverse search, OOD, source tracing, or zero retention was used.
 6. **For inconclusive scores (0.3–0.5)** — explicitly state the result is inconclusive and recommend additional analysis or manual review.
 
 ## Error Handling
@@ -599,26 +431,12 @@ When presenting results to users:
 | 400 | Invalid request body, missing media source, unsupported file, or multiple media sources | Check payload and supply exactly one `file`, `url`, or `media_token` |
 | 401 | Invalid or missing API key | Verify `RESEMBLE_API_KEY` and auth header |
 | 404 | Detection/question/intelligence UUID not found | Verify the UUID and endpoint path |
-| 422 | Detection not completed for Detect Intelligence, or beta/access validation failed | Wait for completion or report access requirement |
+| 422 | Detection not completed for Detect Intelligence or request validation failed | Wait for completion or fix the request |
 | 429 | Rate limited | Back off and retry with exponential delay |
 | 500 | Server error | Retry once, then report failure |
 
 ## Privacy & Compliance Notes
 
 - **Zero retention mode:** set `zero_retention_mode: true` on media detection to auto-delete submitted media after analysis. Responses redact media URLs when enabled.
-- **Text privacy mode:** set `privacy_mode: true` on text detection to avoid retaining text content.
 - **Callbacks:** if using `callback_url`, ensure it is HTTPS and authenticated on your side.
 - **Secrets:** keep API keys in environment variables or secret managers, never in skill files or prompts.
-
-## Documentation References
-
-Verified against Resemble docs at `https://docs.resemble.ai`:
-
-- Deepfake Detection: <https://docs.resemble.ai/detect.md>
-- Submit Detection Job: <https://docs.resemble.ai/detect/create.md>
-- Get Detection Result: <https://docs.resemble.ai/detect/get.md>
-- Intelligence: <https://docs.resemble.ai/detect/intelligence.md>
-- Run Intelligence: <https://docs.resemble.ai/detect/intelligence/create.md>
-- Detect Intelligence: <https://docs.resemble.ai/detect/detect-intelligence.md>
-- Watermarking: <https://docs.resemble.ai/detect/watermark.md>
-- Identity API: <https://docs.resemble.ai/detect/identity.md>
