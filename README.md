@@ -45,48 +45,39 @@ This skill teaches your agent to use Resemble's full detection and media safety 
 - A [Resemble AI](https://app.resemble.ai) API key
 - Media files accessible via public HTTPS URLs
 
-## Pair With the Resemble MCP Server (Recommended)
+## Direct API Usage
 
-For the richest experience, pair this skill with the **[Resemble MCP server](https://github.com/resemble-ai/resemble-mcp)** so your agent gets live access to Resemble's full documentation, API reference, and endpoint schemas — no guessing, no stale examples.
+This skill is built around direct Resemble REST API calls. Agents do **not** need an MCP server to run detection workflows; they can call the API with `curl` using a Resemble API key.
 
-### Easiest setup — hosted SSE endpoint (zero install)
+```bash
+export RESEMBLE_API_KEY="..."
+BASE_URL="https://app.resemble.ai/api/v2"
 
+curl --request POST "${BASE_URL}/detect" \
+  -H "Authorization: Bearer ${RESEMBLE_API_KEY}" \
+  -H "Prefer: wait" \
+  -H "Content-Type: application/json" \
+  --data '{
+    "url": "https://example.com/media.mp4",
+    "intelligence": true,
+    "visualize": true,
+    "zero_retention_mode": true
+  }'
 ```
+
+For private/local media, `POST /detect` also supports direct `multipart/form-data` file upload up to 150 MB, and the Secure Upload flow for larger files or non-public media. See [`SKILL.md`](./SKILL.md) for copy-pasteable `curl` workflows.
+
+## Optional: Pair With the Resemble MCP Server for Docs
+
+If your agent supports MCP, you can still pair this skill with the **[Resemble MCP server](https://github.com/resemble-ai/resemble-mcp)** for live documentation and endpoint schema lookup. MCP is optional; it is not required for the skill's detection, intelligence, watermark, identity, or text-detection workflows.
+
+Hosted endpoint:
+
+```text
 https://mcp.resemble.ai/sse
 ```
 
-Point any MCP-compatible agent at this URL and you're done. No cloning, no installing, no server to run.
-
-**Cursor** — add to `.cursor/mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "resemble": {
-      "url": "https://mcp.resemble.ai/sse"
-    }
-  }
-}
-```
-
-**Claude Desktop / Claude Code** — add to `claude_desktop_config.json` (or `.claude/mcp.json`):
-
-```json
-{
-  "mcpServers": {
-    "resemble": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "https://mcp.resemble.ai/sse"]
-    }
-  }
-}
-```
-
-**Any other MCP-compatible agent** (OpenClaw, Hermes Agent, Windsurf, Cline, Continue, etc.) — point the MCP client at `https://mcp.resemble.ai/sse`. See the [Resemble MCP README](https://github.com/resemble-ai/resemble-mcp) for per-agent config snippets.
-
-**Prefer self-hosting?** Clone [resemble-ai/resemble-mcp](https://github.com/resemble-ai/resemble-mcp) and run it locally.
-
-Once connected, the agent gets tools like `resemble_docs_lookup`, `resemble_api_endpoint`, and `resemble_api_search` — this skill is built to use them when available.
+See the [Resemble MCP README](https://github.com/resemble-ai/resemble-mcp) for per-agent config snippets.
 
 ## How It Works
 
