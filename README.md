@@ -114,7 +114,7 @@ Once installed, try asking your agent:
 - [Detect API Documentation](https://docs.resemble.ai/detect.md) — Deepfake detection docs
 - [Submit Detection Job](https://docs.resemble.ai/detect/create.md) — `POST /detect`
 - [Intelligence Documentation](https://docs.resemble.ai/detect/intelligence.md) — Media intelligence docs
-- [`mcp.resemble.ai/sse`](https://mcp.resemble.ai/sse) — Optional hosted MCP endpoint for docs/schema lookup
+- [`mcp.resemble.ai/mcp`](https://mcp.resemble.ai/mcp) — Optional hosted MCP endpoint for docs/schema lookup
 - [resemble-ai/resemble-mcp](https://github.com/resemble-ai/resemble-mcp) — Optional MCP docs server
 - [skills.sh](https://skills.sh) — The Open Agent Skills Ecosystem
 - [OpenClaw](https://github.com/openclaw/openclaw) — Open-source AI agent (formerly Clawdbot)
