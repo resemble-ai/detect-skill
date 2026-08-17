@@ -23,6 +23,7 @@ Use this skill whenever the user's request involves any of these:
 - Identifying which AI platform synthesized audio (source tracing)
 - Analyzing media for speaker info, emotion, transcription, or misinformation
 - Asking natural-language questions about detection results
+- Running a full investigation workflow — insurance claim, breaking news, ID check, submitted evidence — where detection is one input among several
 - Any mention of: "deepfake", "fake detection", "synthetic media", "media forensics", "authenticity check", "source tracing", "is this real"
 
 **Do NOT use** for text-to-speech generation, voice cloning, or speech-to-text transcription — those are separate Resemble capabilities.
@@ -50,6 +51,7 @@ Never print API keys or paste bearer tokens into chat. Use environment variables
 | Know *which AI platform* made fake audio              | **Audio Source Tracing**  | `POST /detect` with `audio_source_tracing: true` |
 | Get speaker info, emotion, transcription from media   | **Intelligence**          | `POST /intelligence`       |
 | Ask questions about a completed detection             | **Detect Intelligence**   | `POST /detects/{uuid}/intelligence`, then poll answer |
+| Run a managed multi-step investigation with a verdict | **Detect Agents**         | `GET /agents`, then `POST /agents/{preset_id}/run` (SSE) |
 
 When multiple media capabilities apply, combine them in a single `POST /detect` call using flags such as `intelligence: true`, `audio_source_tracing: true`, `visualize: true`, `use_reverse_search: true`, and `zero_retention_mode: true` instead of making separate jobs.
 
@@ -361,6 +363,78 @@ curl --request GET "${BASE_URL}/audio_source_tracings/${TRACE_UUID}" -H "$AUTH_H
 ```
 
 Important: source tracing is most useful when audio is labeled `fake`. If the audio is `real`, a source tracing result may be absent or identify the media as real.
+
+---
+
+## Phase 4: Detect Agents
+
+Detect Agents are six Resemble-managed investigators that wrap a detection in a multi-step workflow: they run Detect, pull in supporting evidence and web research, and end on a written assessment. Use one when the question is "should this claim/post/document be trusted?" rather than "is this file synthetic?".
+
+| Agent | `preset_id` |
+|-------|-------------|
+| Investigate Social Media Content | `investigate_social_content` |
+| Review an Insurance Claim        | `review_insurance_claim`     |
+| Verify Breaking News Media       | `verify_breaking_news`       |
+| Verify a Document or Receipt     | `verify_document`            |
+| Verify Submitted Evidence        | `verify_evidence`            |
+| Verify an ID                     | `verify_id`                  |
+
+List them (the `uuid` is the same stable identifier as `preset_id`):
+
+```bash
+curl --request GET "${BASE_URL}/agents" -H "$AUTH_HEADER"
+```
+
+### Run an Investigation
+
+`multipart/form-data`, with exactly one primary media source (`file` or `url`). The response is a Server-Sent Events stream, so pass `--no-buffer`:
+
+```bash
+curl --no-buffer --request POST "${BASE_URL}/agents/verify_document/run" \
+  -H "$AUTH_HEADER" \
+  -H "Accept: text/event-stream" \
+  -F "file=@/path/to/receipt.pdf" \
+  -F "query=Is this receipt genuine?" \
+  -F "evidence[]=@/path/to/order-confirmation.png" \
+  -F "check_urls=https://example.com/original-listing"
+```
+
+| Field        | Required    | Description                                          |
+|--------------|-------------|------------------------------------------------------|
+| `file`       | One of      | Media to analyze                                     |
+| `url`        | One of      | Public HTTPS media URL                               |
+| `query`      | No          | The investigation question or objective              |
+| `evidence[]` | No          | Supporting files; repeat the field for multiple      |
+| `check_urls` | No          | Additional URLs for the agent to check               |
+
+### Reading the Stream
+
+Each frame is `data: {json}`. The frames that matter:
+
+- `run_started` — carries `run_id`. Save it; the run is persisted server-side even if you disconnect.
+- `detect` — the Resemble Detect evidence, with `label` and `score`. **This is the authenticity verdict under the Iron Law.**
+- `gate` — whether the investigative agent proceeded past detection (`agent_ran`).
+- `tool_call` / `tool_result` — research and detection steps as they happen.
+- `token` / `agent_message` / `message_end` — incremental agent narration.
+- `final_verdict` — the written assessment. `intelligence` is a string, and may contain serialized JSON when the agent uses a schema.
+- `done` — completed. `error` — failed after the stream opened (HTTP stays `200`).
+
+**Iron Law applies unchanged.** `final_verdict` is the agent's reasoning, not a detection result. Never report media as real or fake on the strength of the narration alone — cite the `label` and `score` from the `detect` frame. If no `detect` frame arrived, say the detection did not complete.
+
+### Retrieve Past Runs
+
+```bash
+curl --request GET "${BASE_URL}/agents/verify_document/runs" -H "$AUTH_HEADER"
+curl --request GET "${BASE_URL}/agents/verify_document/runs/${RUN_ID}" -H "$AUTH_HEADER"
+```
+
+Run detail adds the full event transcript, the config snapshot, and the agent's memory before/after — enough to replay the investigation.
+
+### Access
+
+Listing agents and reading run history need nothing beyond a valid API key. **Starting a run** requires entitlement: the D-Agent tier bundle on the team, or one of the team's **5 lifetime free runs**. When neither applies the run endpoint returns `402 Payment Required` as plain JSON *before* the stream opens — check for that before assuming a stream. `GET /agents` also returns `free_runs_remaining`, `free_runs_limit`, and `entitled`, so prefer checking those over triggering a 402.
+
+Creating or editing agents is not available over the API; the six presets are managed by Resemble and activate on first run.
 
 ---
 
