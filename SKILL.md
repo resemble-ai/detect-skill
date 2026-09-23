@@ -1,11 +1,11 @@
 ---
 name: resemble-detect
-description: Deepfake detection and media safety — detect AI-generated audio, images, video, and text, trace synthesis sources, and analyze media intelligence using direct Resemble AI API calls
+description: Deepfake detection and media safety — detect AI-generated audio, images, video, and text, trace synthesis sources, analyze media intelligence, and tell people from AI agents on a website (Agent Detection) using direct Resemble AI API calls
 ---
 
 # Resemble Detect — Deepfake Detection & Media Safety
 
-Analyze audio, image, video, and text for synthetic manipulation, AI-generated content, and media intelligence using **direct Resemble AI API calls**.
+Analyze audio, image, video, and text for synthetic manipulation, AI-generated content, and media intelligence, and find out whether a website's visitors are people or AI agents, using **direct Resemble AI API calls**.
 
 ## Core Principle — THE IRON LAW
 
@@ -14,6 +14,8 @@ Analyze audio, image, video, and text for synthetic manipulation, AI-generated c
 Do not guess, infer, or speculate about media authenticity. Every authenticity claim must be backed by a completed Resemble Detect job with a returned `label`, `score`, and `status: "completed"`. If the detection is still `processing`, wait. If it `failed`, say so — do not substitute your own judgment.
 
 The same law applies to text. Never call writing AI-generated or human-written from style, tone, or "it reads like ChatGPT." A text verdict requires a completed `POST /text_detect` job with `prediction`, `confidence`, and `status: "completed"`.
+
+The same law applies to website visitors. Never say a site's traffic is agents or people from user agents, request volume, or intuition. A visitor verdict comes from Agent Detection (`settled` on a visit, or the totals from `GET /porter/analytics`).
 
 ## When to Use
 
@@ -27,9 +29,12 @@ Use this skill whenever the user's request involves any of these:
 - Analyzing media for speaker info, emotion, transcription, or misinformation
 - Asking natural-language questions about detection results
 - Running a full investigation workflow — insurance claim, breaking news, ID check, submitted evidence — where detection is one input among several
-- Any mention of: "deepfake", "fake detection", "synthetic media", "media forensics", "authenticity check", "source tracing", "is this real", "AI-written", "written by ChatGPT", "AI text", "slop", "is this human-written"
+- Finding out whether a website's visitors are people or AI agents, adding Agent Detection to a site, or reading how much of a site's traffic comes from agents
+- Any mention of: "deepfake", "fake detection", "synthetic media", "media forensics", "authenticity check", "source tracing", "is this real", "AI-written", "written by ChatGPT", "AI text", "slop", "is this human-written", "agent detection", "bot traffic", "AI agents visiting my site", "Porter", "is this visitor a bot"
 
-**Do NOT use** for text-to-speech generation, voice cloning, or speech-to-text transcription — those are separate Resemble capabilities. (Detecting whether *text* is AI-written **is** in scope — see Phase 5.)
+**Do NOT use** for text-to-speech generation, voice cloning, or speech-to-text transcription — those are separate Resemble capabilities. (Detecting whether *text* is AI-written **is** in scope — see Phase 5. Telling people from AI agents on a website **is** in scope — see Phase 6.)
+
+**Agent Detection is not Detect Agents.** Detect Agents (Phase 4) are Resemble's investigators that analyze media. Agent Detection (Phase 6) tells a website whether each *visitor* is a person or an AI agent.
 
 ## Required Setup
 
@@ -57,6 +62,8 @@ Never print API keys or paste bearer tokens into chat. Use environment variables
 | Ask questions about a completed detection             | **Detect Intelligence**   | `POST /detects/{uuid}/intelligence`, then poll answer |
 | Run a managed multi-step investigation with a verdict | **Detect Agents**         | `GET /agents`, then `POST /agents/{preset_id}/run` (SSE) |
 | Check if text was written by an AI model              | **Text Detection**        | `POST /text_detect`, then `GET /text_detect/{uuid}` |
+| Add person-vs-agent detection to a website            | **Agent Detection**       | `POST /porter/sites`, then install the returned `snippet` |
+| See how much of a site's traffic is AI agents         | **Agent Detection**       | `GET /porter/analytics`, `GET /porter/sessions` |
 
 When multiple media capabilities apply, combine them in a single `POST /detect` call using flags such as `intelligence: true`, `audio_source_tracing: true`, `visualize: true`, `use_reverse_search: true`, and `zero_retention_mode: true` instead of making separate jobs. Text detection is a separate endpoint and cannot be combined with a media detection.
 
@@ -557,6 +564,104 @@ Detection is probabilistic. A verdict is evidence, not proof of authorship, and 
 
 ---
 
+## Phase 6: Agent Detection — People vs. AI Agents on a Website
+
+Agent Detection tells a website whether each visitor is a person or an AI agent acting for one, such as a personal assistant that browses, compares, and buys on someone's behalf. It judges visitors by how they move (pointer, clicks, typing, scrolling), not by what they claim to be.
+
+It is **not about blocking agents**. Most agent traffic is a real customer. The point is to know who is visiting, so the site can:
+
+- **See its real traffic**: label every visit, so funnels and dashboards count people again.
+- **Build for agents that help**: find which pages agents use and where they give up, then make those paths easier (an API, structured data, a simpler form).
+- **Stop the ones that don't**: challenge agents on flows where only a person should be, such as signup, checkout, and one-per-person offers.
+
+Agent Detection only reports. It never blocks anyone by itself; the site decides what to do with each verdict.
+
+### Two Keys — Never Mix Them
+
+| Key | Where it lives | What it can do |
+|-----|----------------|----------------|
+| Resemble API key (`RESEMBLE_API_KEY`) | Your server, env vars | Create and manage integrations, read analytics |
+| Publishable key (`pk_live_...`) | The website's HTML | Send telemetry for one site, only from its listed domains |
+
+**Never put the Resemble API key in a web page, a client bundle, or a `NEXT_PUBLIC_*` / `VITE_*` variable.** The telemetry endpoint refuses API keys anyway, but a leaked API key can do everything the account can.
+
+### Set Up a Site
+
+1. Create an integration for the domain. If the team already has one for that domain, the existing one comes back instead of a duplicate:
+   ```bash
+   curl --request POST "${BASE_URL}/porter/sites" \
+     -H "$AUTH_HEADER" \
+     -H "Content-Type: application/json" \
+     --data '{"domain": "example.com", "name": "Example"}'
+   ```
+2. Take `item.snippet` from the response. It is one script tag with the site's publishable key:
+   ```html
+   <script async src="..." data-porter-key="pk_live_..." data-porter-endpoint="https://app.resemble.ai/api/v2/porter/telemetry"></script>
+   ```
+3. Put the snippet in the `<head>` of every page to cover. Use the snippet exactly as returned; do not rebuild it by hand. Where it goes depends on the stack:
+   - **Next.js App Router**: `app/layout.tsx`, using `next/script` with `strategy="afterInteractive"` and the same `data-*` attributes.
+   - **Next.js Pages Router**: `pages/_document.tsx`.
+   - **Plain HTML / static sites**: the shared `<head>` partial or every HTML file.
+   - **WordPress**: the theme's `header.php`, or a header-scripts plugin.
+4. If the site also runs on `www.`, a staging host, or a preview domain, add those hosts. `domains` replaces the whole list, so include every host to keep:
+   ```bash
+   curl --request PATCH "${BASE_URL}/porter/sites/${SITE_ID}" \
+     -H "$AUTH_HEADER" \
+     -H "Content-Type: application/json" \
+     --data '{"domains": ["example.com", "www.example.com", "staging.example.com"]}'
+   ```
+
+### Act on the Verdict in the Page
+
+Only when the user asks the page to *do* something with a verdict. The SDK announces each visit's final verdict once:
+
+```javascript
+window.addEventListener('porter:verdict', (e) => {
+  const { verdict, kind, sessionId } = e.detail  // verdict: "human" | "agent" | "review"
+})
+
+// Or a callback, which still fires if the verdict came before it was registered.
+Porter.onVerdict(({ verdict, kind }) => { /* ... */ })
+```
+
+Default to **labeling** (send the verdict to the site's analytics). Only add a challenge or block on flows the user names, and never on the whole site.
+
+### Read the Traffic
+
+```bash
+# Totals: visits, settled, agents, people, agent_share, gated; plus by_class, by_page, by_day
+curl --request GET "${BASE_URL}/porter/analytics?site_id=${SITE_ID}&from=2026-09-01T00:00:00Z" -H "$AUTH_HEADER"
+
+# Individual visits, newest first (per_page max 100)
+curl --request GET "${BASE_URL}/porter/sessions?site_id=${SITE_ID}&settled=agent&per_page=25" -H "$AUTH_HEADER"
+
+# One visit with its evidence: features, observations, reads, recording
+curl --request GET "${BASE_URL}/porter/sessions/${SESSION_ID}" -H "$AUTH_HEADER"
+```
+
+Filters for both list and analytics: `site_id`, `settled` (`human` or `agent`), `page_path`, `from`, `to`, `q`.
+
+| Field | Meaning |
+|-------|---------|
+| `settled` | The final verdict: `human` or `agent`. `null` means the visit is still open or ended without enough interaction to judge — it is not a verdict. |
+| `visitor_class` | `human`, `computer_use_agent` (an AI operating a browser from the screen), `browser_automation` (Playwright, Puppeteer, Selenium), or `scripted_client` (requests without a real browser). |
+| `p_person` | The model's probability that a person is present, 0.0–1.0. |
+| `action` | What the page was told to do: `observing`, `hint`, `gate`, or `none`. |
+| `totals.agent_share` | Agents divided by decided visits. `null` when nothing is decided yet. |
+
+### Presenting Traffic Results
+
+- Lead with the share of *decided* visits that were agents, and say how many visits that is based on. Undecided visits are not people.
+- Break agents down by `visitor_class` and by page. Pages with many agents and few conversions are where the site is hardest for agents to use.
+- Frame agents as visitors, not attackers, unless the evidence says otherwise (for example, many agents on `/signup` at once).
+- Say the verdict is advisory: it comes from browser signals, which a determined attacker can fake.
+
+### Billing
+
+Each team gets 10,000 decided visits a day free (UTC). After that, each decided visit is billed once. Visits that never reach a verdict are never billed. Creating integrations and reading analytics are free.
+
+---
+
 ## Recommended Workflows
 
 ### Full Media Forensics (Most Thorough)
@@ -607,6 +712,14 @@ Detection is probabilistic. A verdict is evidence, not proof of authorship, and 
 3. Confirm `item.status` is `completed`.
 4. Read `item.prediction` together with `item.confidence`. Present them as a pair ("AI-generated, confidence 0.97"), name the register-specific caveat if the text is a forum post, casual chat, or code review, and remind the user the result is probabilistic.
 
+### Add Agent Detection to the User's Site
+
+1. Find the site's domain(s) from the codebase or ask the user.
+2. `POST /porter/sites` with the main domain; `PATCH` in any extra hosts.
+3. Put `item.snippet` in the shared `<head>` for the stack (see Phase 6).
+4. If the user wants the verdict used, wire `porter:verdict` into their analytics first; add gates only where they ask.
+5. Tell the user results appear in the app under **Agent Detection** once real visitors arrive.
+
 ---
 
 ## Red Flags — Stop and Reassess
@@ -626,6 +739,10 @@ Detection is probabilistic. A verdict is evidence, not proof of authorship, and 
 - **Treating `uncertain` as a verdict** — it means the detector abstained. Report "not enough text to judge."
 - **Timing out a text request early** — the first request after idle can take 3–4 minutes. Use `--max-time 320` and wait it out.
 - **Scoring one 2,000-word document as a single number** — only the first ~350–400 words are read. Chunk it.
+- **Putting the Resemble API key in a web page** — only the publishable key (`pk_live_...`) belongs in HTML or a client bundle.
+- **Confusing Agent Detection with Detect Agents** — one labels website visitors, the other investigates media.
+- **Blocking all agents by default** — Agent Detection is for knowing who visits. Gate only the flows the user names.
+- **Counting unsettled visits as people** — `settled: null` is not a verdict.
 
 ## Response Presentation Guidelines
 
@@ -637,7 +754,8 @@ When presenting results to users:
 4. **Mention limitations** — detection is probabilistic, not absolute proof or legal evidence.
 5. **Include operational details** — whether intelligence, reverse search, OOD, source tracing, or zero retention was used.
 6. **For inconclusive scores (0.3–0.5)** — explicitly state the result is inconclusive and recommend additional analysis or manual review.
-7. **For text** — always present `prediction` and `confidence` together, name the register caveat when one applies (forum, casual chat, code review), and never present the verdict as proof of who wrote it.
+7. **For website traffic** — report agents as a share of decided visits with the count behind it, and frame agents as visitors unless the evidence shows abuse.
+8. **For text** — always present `prediction` and `confidence` together, name the register caveat when one applies (forum, casual chat, code review), and never present the verdict as proof of who wrote it.
 
 ## Error Handling
 
@@ -646,6 +764,8 @@ When presenting results to users:
 | 400 | Invalid request body, missing media source, unsupported file, or multiple media sources | Check payload and supply exactly one `file`, `url`, or `media_token` |
 | 400 | Text detection: fewer than 25 words, more than 100,000 characters, or `"This feature is not available for your account"` | Add text (or aggregate messages), chunk long text, or contact Resemble to enable Text Detection |
 | 401 | Invalid or missing API key | Verify `RESEMBLE_API_KEY` and auth header |
+| 401 | Agent Detection telemetry: missing, unknown, or inactive publishable key, or an API key was sent | Use the integration's `pk_live_...` key from `snippet` |
+| 403 | Agent Detection telemetry: the key is not valid on this origin | `PATCH /porter/sites/{id}` to add the host to `domains` |
 | 402 | Out of entitlement for Text Detection or Detect Agents | Report the paywall to the user; do not retry |
 | 404 | Detection/question/intelligence UUID not found | Verify the UUID and endpoint path |
 | 422 | Detection not completed for Detect Intelligence or request validation failed | Wait for completion or fix the request |
@@ -655,5 +775,6 @@ When presenting results to users:
 ## Privacy & Compliance Notes
 
 - **Zero retention mode:** set `zero_retention_mode: true` on media detection to auto-delete submitted media after analysis. Responses redact media URLs when enabled. On text detection the same flag stops the submitted text from being stored and omits `text_content` from responses.
+- **Agent Detection:** keystrokes are recorded as a category only (letter, digit, backspace), never the key or typed text, and no page content is captured. Visitor IPs are hashed before storage. Raw event streams are kept only for agent visits and a sample of the rest, and expire.
 - **Callbacks:** if using `callback_url`, ensure it is HTTPS and authenticated on your side.
 - **Secrets:** keep API keys in environment variables or secret managers, never in skill files or prompts.
