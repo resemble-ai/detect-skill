@@ -15,7 +15,7 @@ Do not guess, infer, or speculate about media authenticity. Every authenticity c
 
 The same law applies to text. Never call writing AI-generated or human-written from style, tone, or "it reads like ChatGPT." A text verdict requires a completed `POST /text_detect` job with `prediction`, `confidence`, and `status: "completed"`.
 
-The same law applies to website visitors. Never say a site's traffic is agents or people from user agents, request volume, or intuition. A visitor verdict comes from Agent Detection (`settled` on a visit, or the totals from `GET /porter/analytics`).
+The same law applies to website visitors. Never say a site's traffic is agents or people from user agents, request volume, or intuition. A visitor verdict comes from Agent Detection (`settled` on a visit, or the totals from `GET /agent_detection/analytics`).
 
 ## When to Use
 
@@ -62,8 +62,8 @@ Never print API keys or paste bearer tokens into chat. Use environment variables
 | Ask questions about a completed detection             | **Detect Intelligence**   | `POST /detects/{uuid}/intelligence`, then poll answer |
 | Run a managed multi-step investigation with a verdict | **Detect Agents**         | `GET /agents`, then `POST /agents/{preset_id}/run` (SSE) |
 | Check if text was written by an AI model              | **Text Detection**        | `POST /text_detect`, then `GET /text_detect/{uuid}` |
-| Add person-vs-agent detection to a website            | **Agent Detection**       | `POST /porter/sites`, then install the returned `snippet` |
-| See how much of a site's traffic is AI agents         | **Agent Detection**       | `GET /porter/analytics`, `GET /porter/sessions` |
+| Add person-vs-agent detection to a website            | **Agent Detection**       | `POST /agent_detection/sites`, then install the returned `snippet` |
+| See how much of a site's traffic is AI agents         | **Agent Detection**       | `GET /agent_detection/analytics`, `GET /agent_detection/sessions` |
 
 When multiple media capabilities apply, combine them in a single `POST /detect` call using flags such as `intelligence: true`, `audio_source_tracing: true`, `visualize: true`, `use_reverse_search: true`, and `zero_retention_mode: true` instead of making separate jobs. Text detection is a separate endpoint and cannot be combined with a media detection.
 
@@ -589,14 +589,14 @@ Agent Detection only reports. It never blocks anyone by itself; the site decides
 
 1. Create an integration for the domain. If the team already has one for that domain, the existing one comes back instead of a duplicate:
    ```bash
-   curl --request POST "${BASE_URL}/porter/sites" \
+   curl --request POST "${BASE_URL}/agent_detection/sites" \
      -H "$AUTH_HEADER" \
      -H "Content-Type: application/json" \
      --data '{"domain": "example.com", "name": "Example"}'
    ```
 2. Take `item.snippet` from the response. It is one script tag with the site's publishable key:
    ```html
-   <script async src="..." data-porter-key="pk_live_..." data-porter-endpoint="https://app.resemble.ai/api/v2/porter/telemetry"></script>
+   <script async src="..." data-resemble-key="pk_live_..." data-resemble-endpoint="https://app.resemble.ai/api/v2/agent_detection/telemetry"></script>
    ```
 3. Put the snippet in the `<head>` of every page to cover. Use the snippet exactly as returned; do not rebuild it by hand. Where it goes depends on the stack:
    - **Next.js App Router**: `app/layout.tsx`, using `next/script` with `strategy="afterInteractive"` and the same `data-*` attributes.
@@ -605,7 +605,7 @@ Agent Detection only reports. It never blocks anyone by itself; the site decides
    - **WordPress**: the theme's `header.php`, or a header-scripts plugin.
 4. If the site also runs on `www.`, a staging host, or a preview domain, add those hosts. `domains` replaces the whole list, so include every host to keep:
    ```bash
-   curl --request PATCH "${BASE_URL}/porter/sites/${SITE_ID}" \
+   curl --request PATCH "${BASE_URL}/agent_detection/sites/${SITE_ID}" \
      -H "$AUTH_HEADER" \
      -H "Content-Type: application/json" \
      --data '{"domains": ["example.com", "www.example.com", "staging.example.com"]}'
@@ -616,12 +616,12 @@ Agent Detection only reports. It never blocks anyone by itself; the site decides
 Only when the user asks the page to *do* something with a verdict. The SDK announces each visit's final verdict once:
 
 ```javascript
-window.addEventListener('porter:verdict', (e) => {
+window.addEventListener('resemble:verdict', (e) => {
   const { verdict, kind, sessionId } = e.detail  // verdict: "human" | "agent" | "review"
 })
 
 // Or a callback, which still fires if the verdict came before it was registered.
-Porter.onVerdict(({ verdict, kind }) => { /* ... */ })
+ResembleAgentDetection.onVerdict(({ verdict, kind }) => { /* ... */ })
 ```
 
 Default to **labeling** (send the verdict to the site's analytics). Only add a challenge or block on flows the user names, and never on the whole site.
@@ -630,13 +630,13 @@ Default to **labeling** (send the verdict to the site's analytics). Only add a c
 
 ```bash
 # Totals: visits, settled, agents, people, agent_share, gated; plus by_class, by_page, by_day
-curl --request GET "${BASE_URL}/porter/analytics?site_id=${SITE_ID}&from=2026-09-01T00:00:00Z" -H "$AUTH_HEADER"
+curl --request GET "${BASE_URL}/agent_detection/analytics?site_id=${SITE_ID}&from=2026-09-01T00:00:00Z" -H "$AUTH_HEADER"
 
 # Individual visits, newest first (per_page max 100)
-curl --request GET "${BASE_URL}/porter/sessions?site_id=${SITE_ID}&settled=agent&per_page=25" -H "$AUTH_HEADER"
+curl --request GET "${BASE_URL}/agent_detection/sessions?site_id=${SITE_ID}&settled=agent&per_page=25" -H "$AUTH_HEADER"
 
 # One visit with its evidence: features, observations, reads, recording
-curl --request GET "${BASE_URL}/porter/sessions/${SESSION_ID}" -H "$AUTH_HEADER"
+curl --request GET "${BASE_URL}/agent_detection/sessions/${SESSION_ID}" -H "$AUTH_HEADER"
 ```
 
 Filters for both list and analytics: `site_id`, `settled` (`human` or `agent`), `page_path`, `from`, `to`, `q`.
@@ -715,9 +715,9 @@ Each team gets 10,000 decided visits a day free (UTC). After that, each decided 
 ### Add Agent Detection to the User's Site
 
 1. Find the site's domain(s) from the codebase or ask the user.
-2. `POST /porter/sites` with the main domain; `PATCH` in any extra hosts.
+2. `POST /agent_detection/sites` with the main domain; `PATCH` in any extra hosts.
 3. Put `item.snippet` in the shared `<head>` for the stack (see Phase 6).
-4. If the user wants the verdict used, wire `porter:verdict` into their analytics first; add gates only where they ask.
+4. If the user wants the verdict used, wire `resemble:verdict` into their analytics first; add gates only where they ask.
 5. Tell the user results appear in the app under **Agent Detection** once real visitors arrive.
 
 ---
@@ -765,7 +765,7 @@ When presenting results to users:
 | 400 | Text detection: fewer than 25 words, more than 100,000 characters, or `"This feature is not available for your account"` | Add text (or aggregate messages), chunk long text, or contact Resemble to enable Text Detection |
 | 401 | Invalid or missing API key | Verify `RESEMBLE_API_KEY` and auth header |
 | 401 | Agent Detection telemetry: missing, unknown, or inactive publishable key, or an API key was sent | Use the integration's `pk_live_...` key from `snippet` |
-| 403 | Agent Detection telemetry: the key is not valid on this origin | `PATCH /porter/sites/{id}` to add the host to `domains` |
+| 403 | Agent Detection telemetry: the key is not valid on this origin | `PATCH /agent_detection/sites/{id}` to add the host to `domains` |
 | 402 | Out of entitlement for Text Detection or Detect Agents | Report the paywall to the user; do not retry |
 | 404 | Detection/question/intelligence UUID not found | Verify the UUID and endpoint path |
 | 422 | Detection not completed for Detect Intelligence or request validation failed | Wait for completion or fix the request |
