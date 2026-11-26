@@ -1,5 +1,9 @@
 # Resemble Detect Skill
 
+<!-- yarkr:badges:start -->
+[![Indexed on Yarkr](https://api.yarkr.com/functions/v1/api/api/v1/badges/repos/resemble-ai/detect-skill/version.svg)](https://yarkr.com/arks/resemble-ai/detect-skill)
+<!-- yarkr:badges:end -->
+
 An agent skill for deepfake detection and media intelligence — powered by [Resemble AI](https://resemble.ai).
 
 Give any AI agent the ability to detect AI-generated audio, images, video, and text, analyze completed detection results, and tell people from AI agents on a website, using Resemble's Detect, Intelligence, and Agent Detection APIs.
@@ -27,6 +31,38 @@ npx skills add resemble-ai/detect-skill
 ```
 
 **Manual:** Copy [`SKILL.md`](./SKILL.md) into your agent's skills directory.
+
+<!-- yarkr:install:start -->
+## Install with Yarkr
+
+This repo is indexed on [Yarkr](https://yarkr.com/arks/resemble-ai/detect-skill) as the ark [resemble-ai/detect-skill](https://yarkr.com/arks/resemble-ai/detect-skill), so its skills install into Claude Code, Codex, Cursor and other agent harnesses with one command.
+
+### CLI
+
+Install the whole ark, which Yarkr keeps equal to this repo:
+
+```bash
+npx yarkr-cli sync resemble-ai/detect-skill
+```
+
+Or add individual skills:
+
+```bash
+npx yarkr-cli add skill:resemble-ai/detect-skill/resemble-detect
+```
+
+No Node.js? `curl -fsSL https://yarkr.com/install.sh | sh` (macOS, Linux) or `irm https://yarkr.com/install.ps1 | iex` (Windows PowerShell) installs `yarkr` as a standalone binary; then type `yarkr` in place of `npx yarkr-cli`.
+
+### MCP
+
+Connect your agent to the ark over MCP:
+
+```bash
+npx yarkr-cli mcp add resemble-ai/detect-skill
+```
+
+Or point any MCP client at `https://api.yarkr.com/functions/v1/api/mcp/o/resemble-ai/detect-skill`.
+<!-- yarkr:install:end -->
 
 ## What It Does
 
